@@ -1,18 +1,112 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.database import get_db
-from app.schemas.product import Product, ProductCreate
-from app.crud.product import create_product, get_products
+from app.schemas.product import Product, ProductCreate, ProductUpdate
+from app.crud.product import create_product, get_product_by_id, update_product, delete_product, get_all_products, get_products, get_product
 from typing import List
+from app.recommendation import recommend_products, recommend_products_user_based, recommend_products_content_based, recommend_products_hybrid, recommend_vendors  # Add this import
+from app.models.vendor import VendorModel
+from app.schemas.vendor import Vendor
+from app.models.recommendation import UserInteraction
+import logging
 
 router = APIRouter()
 
 @router.post("/", response_model=Product, status_code=status.HTTP_201_CREATED)
-async def create_product_route(product: ProductCreate, db: Session = Depends(get_db)):
-    product_id = await create_product(db, product)
-    return {**product.dict(), "id": product_id[0]}
+def create_product_route(product: ProductCreate, db: Session = Depends(get_db)):
+    db_product = create_product(db, product)
+    return db_product
 
 @router.get("/", response_model=List[Product])
-async def read_products(db: Session = Depends(get_db)):
-    products = await get_products(db)
+def read_products(db: Session = Depends(get_db)):
+    products = get_products(db)
+    if not products:
+        return []
     return products
+
+@router.get("/{product_id}", response_model=Product)
+def read_product(product_id: int, db: Session = Depends(get_db)):
+    product = get_product(db, product_id)
+    if product is None:
+        raise HTTPException(status_code=404, detail="Product not found")
+    return product
+@router.put("/{product_id}", response_model=Product, status_code=status.HTTP_200_OK)
+def update_product_route(product_id: int, product: ProductUpdate, db: Session = Depends(get_db)):
+    db_product = get_product_by_id(db, product_id)
+    if db_product is None:
+        raise HTTPException(status_code=404, detail="Product not found")
+    updated_product = update_product(db, db_product, product)
+    return updated_product
+
+@router.delete("/{product_id}", status_code=status.HTTP_200_OK)
+def delete_product_route(product_id: int, db: Session = Depends(get_db)):
+    deleted = delete_product(db, product_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Product not found")
+    return {"detail": "Product deleted"}
+
+
+@router.get("/", response_model=List[Product], status_code=status.HTTP_200_OK)
+def list_products_route(db: Session = Depends(get_db)):
+    products = get_all_products(db)
+    return products
+
+@router.get("/{product_id}", response_model=Product)
+def get_product_route(product_id: int, db: Session = Depends(get_db)):
+    db_product = get_product(db, product_id)
+    if not db_product:
+        raise HTTPException(status_code=404, detail="Product not found")
+    return db_product
+
+@router.get("/recommendations/{user_id}", response_model=List[Product])
+def get_recommendations(user_id: int, db: Session = Depends(get_db)):
+    recommendations = recommend_products(user_id, db)
+    
+    if not recommendations:
+        logging.info(f"No recommendations found for user {user_id}.")
+        raise HTTPException(status_code=404, detail="No recommendations found")
+    
+    logging.info(f"Found {len(recommendations)} recommendations for user {user_id}.")
+    return recommendations
+
+@router.get("/recommendations/collaborative/{user_id}", response_model=List[Product])
+def get_recommendations_collaborative(user_id: int, db: Session = Depends(get_db)):
+    recommendations = recommend_products_user_based(user_id, db)
+    
+    if not recommendations:
+        logging.info(f"No collaborative recommendations found for user {user_id}.")
+        raise HTTPException(status_code=404, detail="No recommendations found")
+    
+    logging.info(f"Found {len(recommendations)} collaborative recommendations for user {user_id}.")
+    return recommendations
+
+@router.get("/vendor-recommendations/{user_id}", response_model=List[Vendor])
+def get_vendor_recommendations(user_id: int, db: Session = Depends(get_db)):
+    recommendations = recommend_vendors(user_id, db)
+    
+    if not recommendations:
+        logging.info(f"No vendor recommendations found for user {user_id}.")
+        raise HTTPException(status_code=404, detail="No recommendations found")
+    
+    logging.info(f"Found {len(recommendations)} vendor recommendations for user {user_id}.")
+    return recommendations
+
+
+@router.get("/recommendations/content/{user_id}", response_model=List[Product])
+def get_recommendations_content(user_id: int, db: Session = Depends(get_db)):
+    recommendations = recommend_products_content_based(user_id, db)
+    if not recommendations:
+        raise HTTPException(status_code=404, detail="No content-based recommendations found")
+    return recommendations
+
+
+
+@router.get("/recommendations/hybrid/{user_id}", response_model=List[Product])
+def get_recommendations_hybrid(user_id: int, db: Session = Depends(get_db)):
+    recommendations = recommend_products_hybrid(user_id, db)
+    if not recommendations:
+        raise HTTPException(status_code=404, detail="No hybrid recommendations found")
+    return recommendations
+
+
+

@@ -13,3 +13,11 @@ class Product(ProductBase):
 
     class Config:
         orm_mode = True
+
+class ProductUpdate(BaseModel):
+    name: str
+    description: str
+    price: float
+
+    class Config:
+        orm_mode = True
