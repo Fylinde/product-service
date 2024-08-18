@@ -1,13 +1,22 @@
 from fastapi import FastAPI
-from app.routes import router
-from app.database import engine, BaseModel
 from app.routes import product
+from app.database import engine, BaseModel
 
-app = FastAPI()
+# Initialize FastAPI with metadata for Swagger
+app = FastAPI(
+    title="Product Service API",
+    description="API documentation for the Product Service, which manages product data and related operations.",
+    version="1.0.0",
+    openapi_tags=[
+        {"name": "products", "description": "Operations related to managing products"},
+    ],
+)
 
-#BaseModel.metadata.create_all(bind=engine)
+# Initialize database tables
+BaseModel.metadata.create_all(bind=engine)
 
-app.include_router(product.router, prefix="/products")
+# Register the product router
+app.include_router(product.router, prefix="/products", tags=["products"])
 
 @app.get("/")
 def read_root():

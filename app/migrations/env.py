@@ -12,7 +12,7 @@ from app.database import BaseModel
 from app.models.vendor import VendorModel  # Ensure this is imported
 from app.models.product import ProductModel  # Ensure this is imported
 from app.models.recommendation import UserInteraction
-
+from app.models.category import CategoryModel
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
