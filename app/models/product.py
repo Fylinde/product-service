@@ -1,7 +1,7 @@
-
-from sqlalchemy import Column, Integer, String, Float, ForeignKey
-from app.database import BaseModel
+from sqlalchemy import Column, Integer, String, Float, ForeignKey, Boolean, DateTime, ARRAY
 from sqlalchemy.orm import relationship
+from app.database import BaseModel
+from datetime import datetime
 
 class ProductModel(BaseModel):
     __tablename__ = "products"
@@ -23,7 +23,25 @@ class ProductModel(BaseModel):
     three_d_model_url = Column(String, nullable=True)
     ar_url = Column(String, nullable=True)
 
+    # Inventory and Stock Tracking fields
+    is_in_stock = Column(Boolean, default=True)
+    total_stock = Column(Integer, default=0)  # Summarized total stock across warehouses
+
+        # SEO Fields
+    meta_title = Column(String(255), nullable=True)
+    meta_description = Column(String(255), nullable=True)
+    meta_keywords = Column(String(255), nullable=True)
+    
+
     vendor = relationship("VendorModel", back_populates="products")
-    category = relationship("CategoryModel", back_populates="products")
+    #category = relationship("CategoryModel", back_populates="products")
 
     interactions = relationship("UserInteraction", back_populates="product")
+
+    # New relationship to track stock at different warehouse locations
+    # stocks = relationship("ProductStockModel", back_populates="product")
+
+    tags = relationship("ProductTagModel", back_populates="product", cascade="all, delete-orphan")
+    
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

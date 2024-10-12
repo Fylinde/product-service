@@ -6,13 +6,16 @@ from sqlalchemy import engine_from_config
 from sqlalchemy import pool
 from alembic import context
 
-sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 
 from app.database import BaseModel
 from app.models.vendor import VendorModel  # Ensure this is imported
 from app.models.product import ProductModel  # Ensure this is imported
 from app.models.recommendation import UserInteraction
 from app.models.category import CategoryModel
+from app.models.product_stock import ProductStockModel
+from app.models.warehouse import WarehouseModel
+
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
