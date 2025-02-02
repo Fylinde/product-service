@@ -23,6 +23,11 @@ RUN apt-get update && apt-get install -y iputils-ping
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+
+# Install development tools for hot reload
+RUN pip install watchdog[watchmedo]
+
+
 # Install bcrypt
 RUN pip install bcrypt
 

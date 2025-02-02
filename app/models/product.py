@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, ForeignKey, Boolean, DateTime, ARRAY
+from sqlalchemy import Column, Integer, String, Float, Boolean, DateTime
 from sqlalchemy.orm import relationship
 from app.database import BaseModel
 from datetime import datetime
@@ -9,9 +9,14 @@ class ProductModel(BaseModel):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, nullable=False)
     description = Column(String, nullable=True)
-    price = Column(Float, nullable=False)
-    vendor_id = Column(Integer, ForeignKey("vendors.id"))
-    category_id = Column(Integer, ForeignKey("categories.id"))  # Linking to categories
+
+    # Dual pricing system
+    seller_price = Column(Float, nullable=False)  # Seller's price in their currency
+    seller_currency = Column(String, nullable=False, default="USD")  # Seller's currency
+    buyer_price = Column(Float, nullable=True)  # Converted price for buyer
+    buyer_currency = Column(String, nullable=True, default="USD")  # Buyer's currency
+
+    # Additional product details
     color = Column(String, nullable=True)
     material = Column(String, nullable=True)
     size = Column(String, nullable=True)
@@ -27,21 +32,19 @@ class ProductModel(BaseModel):
     is_in_stock = Column(Boolean, default=True)
     total_stock = Column(Integer, default=0)  # Summarized total stock across warehouses
 
-        # SEO Fields
+    # SEO Fields
     meta_title = Column(String(255), nullable=True)
     meta_description = Column(String(255), nullable=True)
     meta_keywords = Column(String(255), nullable=True)
-    
 
-    vendor = relationship("VendorModel", back_populates="products")
-    #category = relationship("CategoryModel", back_populates="products")
+    # Relationships
+    tags = relationship(
+        "ProductTagModel", back_populates="product", cascade="all, delete-orphan"
+    )
+    ratings = relationship(
+        "RatingModel", back_populates="product", cascade="all, delete-orphan"
+    )
 
-    interactions = relationship("UserInteraction", back_populates="product")
-
-    # New relationship to track stock at different warehouse locations
-    # stocks = relationship("ProductStockModel", back_populates="product")
-
-    tags = relationship("ProductTagModel", back_populates="product", cascade="all, delete-orphan")
-    
+    # Timestamp fields
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

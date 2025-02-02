@@ -1,60 +1,116 @@
-from sqlalchemy import select, and_, or_
 from sqlalchemy.orm import Session
 from app.models.product import ProductModel
+from typing import List, Optional
 from app.schemas.product import ProductCreate, ProductUpdate
-from app.models.product_stock import ProductStockModel
-# Create a new product
-def create_product(db: Session, product: ProductCreate):
-    db_product = ProductModel(**product.dict())
-    db.add(db_product)
-    db.commit()
-    db.refresh(db_product)
-    return db_product
 
-# Retrieve a product by its ID
-def get_product_by_id(db: Session, product_id: int):
+def get_product_by_id(db: Session, product_id: int) -> Optional[ProductModel]:
+    """
+    Fetch a product by its ID.
+    """
     return db.query(ProductModel).filter(ProductModel.id == product_id).first()
 
-# Update product details
-def update_product(db: Session, product_id: int, product: ProductUpdate):
-    db_product = get_product_by_id(db, product_id)
-    if not db_product:
-        return None
-    for key, value in product.dict().items():
-        setattr(db_product, key, value)
-    db.commit()
-    db.refresh(db_product)
-    return db_product
+def get_products(
+    db: Session, 
+    page: int = 1, 
+    page_size: int = 10, 
+    seller_id: Optional[int] = None, 
+    category_id: Optional[int] = None
+) -> List[ProductModel]:
+    """
+    Fetch products with optional filtering by seller_id and category_id.
+    Pagination is supported.
+    """
+    query = db.query(ProductModel)
+    
+    if seller_id:
+        query = query.filter(ProductModel.seller_id == seller_id)
+    
+    if category_id:
+        query = query.filter(ProductModel.category_id == category_id)
 
-# Delete a product
-def delete_product(db: Session, product_id: int):
-    db_product = get_product_by_id(db, product_id)
-    if db_product:
-        db.delete(db_product)
+    return query.offset((page - 1) * page_size).limit(page_size).all()
+
+def create_product(db: Session, product_data: ProductCreate) -> ProductModel:
+    """
+    Create a new product in the database.
+    """
+    product = ProductModel(**product_data.dict())
+    db.add(product)
+    db.commit()
+    db.refresh(product)
+    return product
+
+def delete_product(db: Session, product_id: int) -> bool:
+    """
+    Delete a product by its ID.
+    Returns True if the product was successfully deleted, otherwise False.
+    """
+    product = db.query(ProductModel).filter(ProductModel.id == product_id).first()
+    if product:
+        db.delete(product)
         db.commit()
         return True
     return False
 
-# Retrieve all products
-def get_all_products(db: Session):
-    return db.query(ProductModel).all()
+def get_products_by_category(db: Session, category_id: int, page: int = 1, page_size: int = 10) -> List[ProductModel]:
+    """
+    Fetch products belonging to a specific category with pagination.
+    """
+    query = db.query(ProductModel).filter(ProductModel.category_id == category_id)
+    return query.offset((page - 1) * page_size).limit(page_size).all()
 
-# Retrieve product details including stock information from warehouses
-def get_product_with_stock(db: Session, product_id: int):
+
+def get_product_pricing(db: Session, product_id: int) -> Optional[ProductModel]:
+    """
+    Fetch pricing details for a specific product.
+    """
+    return db.query(ProductModel).filter(ProductModel.id == product_id).first()
+
+
+def get_all_colors(db: Session) -> List[str]:
+    """
+    Fetch all unique colors from the product database.
+    """
+    colors = db.query(ProductModel.color).distinct().all()
+    return [color[0] for color in colors if color[0]]  # Extract and filter non-null colors
+
+
+def update_product(db: Session, product_id: int, product_data: ProductUpdate) -> ProductModel:
+    """
+    Update product details in the database.
+    """
     product = db.query(ProductModel).filter(ProductModel.id == product_id).first()
-    if product:
-        stock_info = db.query(ProductStockModel).filter(ProductStockModel.product_id == product_id).all()
-        return {"product": product, "stock": stock_info}
-    return None
+    if not product:
+        return None
 
-# Search products by category
-def search_products_by_category(db: Session, category_id: int):
-    return db.query(ProductModel).filter(ProductModel.category_id == category_id).all()
+    for key, value in product_data.dict(exclude_unset=True).items():
+        setattr(product, key, value)
 
-# Get products by vendor
-def get_products_by_vendor(db: Session, vendor_id: int):
-    return db.query(ProductModel).filter(ProductModel.vendor_id == vendor_id).all()
+    db.commit()
+    db.refresh(product)
+    return product
 
-# Filter products by stock availability
-def get_products_in_stock(db: Session):
-    return db.query(ProductModel).filter(ProductModel.is_in_stock == True).all()
+def get_products_by_type(db: Session, product_type: str, filter: Optional[str] = None) -> List[ProductModel]:
+    """
+    Fetch products filtered by type and optional filter criteria.
+    """
+    query = db.query(ProductModel).filter(ProductModel.type == product_type)  # Assuming `type` is a column
+    
+    if filter:
+        # Example of applying a generic filter; adjust based on actual use case
+        query = query.filter(ProductModel.name.ilike(f"%{filter}%"))
+
+    return query.all()
+
+
+def get_products_by_brand(db: Session, brand: str) -> List[ProductModel]:
+    """
+    Fetch products associated with a specific brand.
+    """
+    return db.query(ProductModel).filter(ProductModel.brand == brand).all()
+
+def get_product_details(db: Session, product_id: int) -> Optional[ProductModel]:
+    """
+    Fetch detailed information for a specific product by its ID.
+    """
+    return db.query(ProductModel).filter(ProductModel.id == product_id).first()

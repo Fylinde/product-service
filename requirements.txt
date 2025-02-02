@@ -6,3 +6,9 @@ pydantic
 python-dotenv
 psycopg2-binary
 pika
+requests 
+pytest
+Faker
+factory_boy
+watchdog 
+uvicorn
